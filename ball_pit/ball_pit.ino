@@ -49,12 +49,21 @@ void setup() {
   delay(1000);
 }
 
+int loop_count = 0;
+
 void loop() {
   sense_ball();
-  check_buttons();
+
+  if (loop_count % 10 == 0) {
+    check_buttons();
+    loop_count = 0;
+  }
+  
   if (display_needs_update) {
     update_display();
   }
+  
+  loop_count++;
   
   delay(10);
 }
