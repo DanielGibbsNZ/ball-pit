@@ -7,7 +7,7 @@
 #define BUTTON_2_PIN 4
 #define SPEAKER_PIN 14
 
-#define BALL_DISTANCE_THRESHOLD 300
+#define BALL_DISTANCE_THRESHOLD 350
 
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
