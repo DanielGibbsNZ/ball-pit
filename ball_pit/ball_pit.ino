@@ -8,7 +8,8 @@
 #define BUTTON_2_PIN 4
 #define SPEAKER_PIN 14
 
-#define BALL_DISTANCE_THRESHOLD 350
+#define BALL_DISTANCE_THRESHOLD 300
+#define BALL_DISTANCE_NUM_READS 1
 
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
@@ -94,10 +95,10 @@ void sense_ball() {
   // Read the distance sensor pin 5 times and take the average to eliminate any noise.
   float distance_sum = 0;
   int i;
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
     distance_sum += analogRead(DISTANCE_SENSOR_PIN);
   }
-  float distance = distance_sum / 5.0;
+  float distance = distance_sum / BALL_DISTANCE_NUM_READS;
 
   // Detect whether a new ball has been seen or not.
   bool new_is_ball = distance > BALL_DISTANCE_THRESHOLD;
