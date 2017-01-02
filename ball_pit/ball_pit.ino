@@ -98,7 +98,7 @@ void sense_ball() {
   float distance = distance_sum / 5.0;
 
   // Detect whether a new ball has been seen or not.
-  bool new_is_ball = distance < BALL_DISTANCE_THRESHOLD;
+  bool new_is_ball = distance > BALL_DISTANCE_THRESHOLD;
   if (new_is_ball && !is_ball) {
     num_balls++;
     beep();
