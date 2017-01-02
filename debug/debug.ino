@@ -5,6 +5,10 @@
 #define DISTANCE_SENSOR_PIN 5
 #define SPEAKER_PIN 14
 
+#define BALL_DISTANCE_THRESHOLD_HIGH 300
+#define BALL_DISTANCE_THRESHOLD_LOW 200
+#define BALL_DISTANCE_NUM_READS 1
+
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
 void setup() {
@@ -25,11 +29,11 @@ void setup() {
   lcd.print("==== DEBUG ====");
 
   // Play boot sound.
-  sound(1046, 50000); // C6
-  sound(1174, 50000); // D6
-  sound(1244, 50000); // Eb6
-  sound(1396, 50000); // F6
   sound(1567, 50000); // G6
+  sound(1396, 50000); // F6
+  sound(1318, 50000); // E6
+  sound(1174, 50000); // D6
+  sound(1046, 50000); // C6
   
   delay(1000);
 }
@@ -38,10 +42,13 @@ void loop() {
   // Read the distance sensor pin 5 times and take the average to eliminate any noise.
   float distance_sum = 0;
   int i;
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
     distance_sum += analogRead(DISTANCE_SENSOR_PIN);
   }
-  float distance = distance_sum / 5.0;
+  float distance = distance_sum / BALL_DISTANCE_NUM_READS;
+  if (distance > BALL_DISTANCE_THRESHOLD_HIGH || distance < BALL_DISTANCE_THRESHOLD_LOW) {
+    sound(1000, 20000);
+  }
 
   // Update the second line of the LCD display.
   lcd.write(0xFE);
