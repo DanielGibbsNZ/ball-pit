@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include <SoftwareSerial.h>
 
 #define LCD_RX_PIN 17
@@ -43,11 +44,9 @@ void setup() {
 
   // Sense the ball, then ignore the outcome.
   sense_ball();
-  num_balls = 0;
-  display_needs_update = true;
   
   delay(1000);
-  beep();
+  load_num_balls();
 }
 
 int loop_count = 0;
@@ -76,14 +75,17 @@ void check_buttons() {
   if (button1 && button2) {
     num_balls = 0;
     beep();
+    save_num_balls();
     display_needs_update = true;
   } else if (button1) {
     num_balls += 10;
     beep();
+    save_num_balls();
     display_needs_update = true;
   } else if (button2) {
     num_balls++;
     beep();
+    save_num_balls();
     display_needs_update = true;
   }
 }
@@ -102,6 +104,7 @@ void sense_ball() {
   if (new_is_ball && !is_ball) {
     num_balls++;
     beep();
+    save_num_balls();
     display_needs_update = true;
   }
   is_ball = new_is_ball;
@@ -138,4 +141,27 @@ void sound(int freq, long duration) {
     digitalWrite(SPEAKER_PIN, LOW);
     delayMicroseconds(us);
   }
+}
+
+void load_num_balls() {
+  long four = EEPROM.read(0);
+  long three = EEPROM.read(1);
+  long two = EEPROM.read(2);
+  long one = EEPROM.read(3);
+
+  num_balls = ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+  beep();
+  display_needs_update = true;
+}
+
+void save_num_balls() {
+  byte four = (num_balls & 0xFF);
+  byte three = ((num_balls >> 8) & 0xFF);
+  byte two = ((num_balls >> 16) & 0xFF);
+  byte one = ((num_balls >> 24) & 0xFF);
+
+  EEPROM.write(0, four);
+  EEPROM.write(1, three);
+  EEPROM.write(2, two);
+  EEPROM.write(3, one);
 }
