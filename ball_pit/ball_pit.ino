@@ -55,7 +55,7 @@ int loop_count = 0;
 void loop() {
   sense_ball();
 
-  if (loop_count % 10 == 0) {
+  if (loop_count % 20 == 0) {
     check_buttons();
     loop_count = 0;
   }
