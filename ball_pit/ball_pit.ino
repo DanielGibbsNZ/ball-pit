@@ -47,6 +47,7 @@ void setup() {
   display_needs_update = true;
   
   delay(1000);
+  beep();
 }
 
 int loop_count = 0;
@@ -74,12 +75,15 @@ void check_buttons() {
   
   if (button1 && button2) {
     num_balls = 0;
+    beep();
     display_needs_update = true;
   } else if (button1) {
     num_balls += 10;
+    beep();
     display_needs_update = true;
   } else if (button2) {
     num_balls++;
+    beep();
     display_needs_update = true;
   }
 }
@@ -97,7 +101,7 @@ void sense_ball() {
   bool new_is_ball = distance < BALL_DISTANCE_THRESHOLD;
   if (new_is_ball && !is_ball) {
     num_balls++;
-    sound(1000 + num_balls, 20000);
+    beep();
     display_needs_update = true;
   }
   is_ball = new_is_ball;
@@ -117,6 +121,10 @@ void update_display() {
     lcd.print(buf);
   }
   display_needs_update = false;
+}
+
+void beep() {
+  sound(1000 + num_balls, 20000);
 }
 
 void sound(int freq, long duration) {
