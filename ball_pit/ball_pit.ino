@@ -13,6 +13,7 @@ SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
 long num_balls = 0;
 bool is_ball = false;
+bool display_needs_update = false;
 
 void setup() {
   // Set up LCD display.
@@ -43,20 +44,16 @@ void setup() {
   // Sense the ball, then ignore the outcome.
   sense_ball();
   num_balls = 0;
+  display_needs_update = true;
   
   delay(1000);
 }
 
-int loop_count = 0;
-
 void loop() {
   sense_ball();
   check_buttons();
-
-  loop_count++;
-  if (loop_count % 10 == 0) {
+  if (display_needs_update) {
     update_display();
-    loop_count = 0;
   }
   
   delay(10);
@@ -68,10 +65,13 @@ void check_buttons() {
   
   if (button1 && button2) {
     num_balls = 0;
+    display_needs_update = true;
   } else if (button1) {
     num_balls += 10;
+    display_needs_update = true;
   } else if (button2) {
     num_balls++;
+    display_needs_update = true;
   }
 }
 
@@ -89,6 +89,7 @@ void sense_ball() {
   if (new_is_ball && !is_ball) {
     num_balls++;
     sound(1000 + num_balls, 20000);
+    display_needs_update = true;
   }
   is_ball = new_is_ball;
 }
@@ -106,6 +107,7 @@ void update_display() {
     sprintf(buf, "%-16s", buf);
     lcd.print(buf);
   }
+  display_needs_update = false;
 }
 
 void sound(int freq, long duration) {
