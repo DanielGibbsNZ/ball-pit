@@ -16,14 +16,17 @@
 #define TIMER_DURATION 60
 
 #define NUM_MODES 2
+
 #define NORMAL_MODE 0
 #define TIMED_MODE 1
+#define DEBUG_MODE 999
 
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
 int mode = NORMAL_MODE;
 
 long num_balls = 0;
+float distance = 0;
 
 long num_balls_timed = 0;
 bool timer_running = false;
@@ -76,7 +79,7 @@ void loop() {
     update_timer();
   }
   
-  if (display_needs_update) {
+  if (display_needs_update || (loop_count % 10 == 0 && mode == DEBUG_MODE)) {
     update_display();
   }
   
@@ -93,6 +96,17 @@ void check_buttons() {
   bool button2 = (digitalRead(BUTTON_2_PIN) == 0);
   bool button3 = (digitalRead(BUTTON_3_PIN) == 0);
   bool button4 = (digitalRead(BUTTON_4_PIN) == 0);
+
+  if (button3 && button4) {
+    if (mode == DEBUG_MODE) {
+      return;
+    }
+    mode = DEBUG_MODE;
+    update_display_title();
+    beep();
+    display_needs_update = true;
+    return;
+  }
 
   if (mode == NORMAL_MODE) {
     if (button1 && button2) {
@@ -132,8 +146,13 @@ void check_buttons() {
   }
 
   if (button3) {
-    // Switch to the next mode.
-    mode = (mode + 1) % NUM_MODES;
+    if (mode == DEBUG_MODE) {
+      mode = NORMAL_MODE;
+    } else {
+      // Switch to the next mode.
+      mode = (mode + 1) % NUM_MODES;
+    }
+
     update_display_title();
     beep();
     display_needs_update = true;
@@ -159,7 +178,7 @@ void sense_ball() {
   for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
     distance_sum += analogRead(DISTANCE_SENSOR_PIN);
   }
-  float distance = distance_sum / BALL_DISTANCE_NUM_READS;
+  distance = distance_sum / BALL_DISTANCE_NUM_READS;
 
   // Detect whether a new ball has been seen or not.
   bool new_is_ball = distance > BALL_DISTANCE_THRESHOLD;
@@ -173,6 +192,8 @@ void sense_ball() {
         num_balls_timed++;
         beep();
       }
+    } else if (mode == DEBUG_MODE) {
+      beep();
     }
     display_needs_update = true;
   }
@@ -210,6 +231,8 @@ void update_display_title() {
     lcd.print("=== BALL PIT ===");
   } else if (mode == TIMED_MODE) {
     lcd.print("== TIMED MODE ==");
+  } else if (mode == DEBUG_MODE) {
+    lcd.print("---- DEBUG -----");
   }
 }
 
@@ -233,6 +256,8 @@ void update_display() {
       sprintf(buf, "%ld balls", num_balls_timed);
       sprintf(buf, "%-12s %02ds", buf, time_remaining);
     }
+  } else if (mode == DEBUG_MODE) {
+    sprintf(buf, "%-16d", int(distance));
   }
   lcd.print(buf);
   display_needs_update = false;
