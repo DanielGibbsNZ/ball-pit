@@ -60,7 +60,7 @@ void setup() {
 
   // Sense the ball, then ignore the outcome.
   sense_ball();
-  
+
   delay(1000);
   load_num_balls();
 }
@@ -78,13 +78,13 @@ void loop() {
   if (mode == TIMED_MODE) {
     update_timer();
   }
-  
+
   if (display_needs_update || (loop_count % 10 == 0 && mode == DEBUG_MODE)) {
     update_display();
   }
-  
+
   loop_count++;
-  
+
   delay(10);
 }
 
