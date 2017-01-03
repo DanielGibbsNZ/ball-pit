@@ -6,14 +6,30 @@
 #define DISTANCE_SENSOR_PIN 5
 #define BUTTON_1_PIN 2
 #define BUTTON_2_PIN 4
+#define BUTTON_3_PIN 15
+#define BUTTON_4_PIN 16
 #define SPEAKER_PIN 14
 
 #define BALL_DISTANCE_THRESHOLD 300
 #define BALL_DISTANCE_NUM_READS 1
 
+#define TIMER_DURATION 60
+
+#define NUM_MODES 2
+#define NORMAL_MODE 0
+#define TIMED_MODE 1
+
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
+int mode = NORMAL_MODE;
+
 long num_balls = 0;
+
+long num_balls_timed = 0;
+bool timer_running = false;
+int time_remaining = TIMER_DURATION;
+long timer_start = 0;
+
 bool is_ball = false;
 bool display_needs_update = false;
 
@@ -28,13 +44,9 @@ void setup() {
   pinMode(BUTTON_1_PIN, INPUT);
   pinMode(BUTTON_2_PIN, INPUT);
 
-  // Set up the top line of the LCD display as it never changes.
+  // Start the LCD and display the title.
   lcd.begin(9600);
-  lcd.write(0xFE);
-  lcd.write(0x01);
-  lcd.write(0xFE);
-  lcd.write(0x80);
-  lcd.print("=== BALL PIT ===");
+  update_display_title();
 
   // Play boot sound.
   sound(1046, 50000); // C6
@@ -59,6 +71,10 @@ void loop() {
     check_buttons();
     loop_count = 0;
   }
+
+  if (mode == TIMED_MODE) {
+    update_timer();
+  }
   
   if (display_needs_update) {
     update_display();
@@ -70,25 +86,70 @@ void loop() {
 }
 
 void check_buttons() {
+  // Buttons 1 and 2 used to change ball count.
+  // Button 3 used to change mode.
+  // Button 4 used to start/stop timer in timed mode.
   bool button1 = (digitalRead(BUTTON_1_PIN) == 0);
   bool button2 = (digitalRead(BUTTON_2_PIN) == 0);
-  
-  if (button1 && button2) {
-    num_balls = 0;
-    beep();
-    save_num_balls();
-    display_needs_update = true;
-  } else if (button1) {
-    num_balls += 10;
-    beep();
-    save_num_balls();
-    display_needs_update = true;
-  } else if (button2) {
-    num_balls++;
-    beep();
-    save_num_balls();
-    display_needs_update = true;
+  bool button3 = (digitalRead(BUTTON_3_PIN) == 0);
+  bool button4 = (digitalRead(BUTTON_4_PIN) == 0);
+
+  if (mode == NORMAL_MODE) {
+    if (button1 && button2) {
+      num_balls = 0;
+      beep();
+      save_num_balls();
+      display_needs_update = true;
+    } else if (button1) {
+      num_balls += 10;
+      beep();
+      save_num_balls();
+      display_needs_update = true;
+    } else if (button2) {
+      num_balls++;
+      beep();
+      save_num_balls();
+      display_needs_update = true;
+    }
+  } else if (mode == TIMED_MODE) {
+    if (button4 && !timer_running) {
+      // If the timer hasn't started yet, start it.
+      // Otherwise, reset the timer.
+      if (timer_start == 0) {
+        timer_start = millis();
+        timer_running = true;
+        sound(1046, 100000); // C6
+        sound(1318, 100000); // E6
+        sound(1567, 100000); // G6
+        sound(2093, 100000); // C7
+        display_needs_update = true;
+      } else {
+        reset_timer();
+        beep();
+        display_needs_update = true;
+      }
+    }
   }
+
+  if (button3) {
+    // Switch to the next mode.
+    mode = (mode + 1) % NUM_MODES;
+    update_display_title();
+    beep();
+    display_needs_update = true;
+
+    // When entering timed mode, reset everything.
+    if (mode == TIMED_MODE) {
+      reset_timer();
+    }
+  }
+}
+
+void reset_timer() {
+  num_balls_timed = 0;
+  timer_running = false;
+  time_remaining = TIMER_DURATION;
+  timer_start = 0;
 }
 
 void sense_ball() {
@@ -103,12 +164,53 @@ void sense_ball() {
   // Detect whether a new ball has been seen or not.
   bool new_is_ball = distance > BALL_DISTANCE_THRESHOLD;
   if (new_is_ball && !is_ball) {
-    num_balls++;
-    beep();
-    save_num_balls();
+    if (mode == NORMAL_MODE) {
+      num_balls++;
+      beep();
+      save_num_balls();
+    } else if (mode == TIMED_MODE) {
+      if (timer_running) {
+        num_balls_timed++;
+        beep();
+      }
+    }
     display_needs_update = true;
   }
   is_ball = new_is_ball;
+}
+
+void update_timer() {
+  if (timer_running) {
+    long now = millis();
+    long elapsed = now - timer_start;
+    float elapsed_seconds = elapsed / 1000.0;
+    float remaining_seconds = TIMER_DURATION - elapsed_seconds;
+
+    if (remaining_seconds < 0) {
+      time_remaining = 0;
+      timer_running = false;
+      display_needs_update = true;
+      sound(2093, 100000); // C7
+      sound(1567, 100000); // G6
+      sound(1318, 100000); // E6
+      sound(1046, 100000); // C6
+    } else if ((int)remaining_seconds != time_remaining) {
+      time_remaining = (int)remaining_seconds;
+      display_needs_update = true;
+    }
+  }
+}
+
+void update_display_title() {
+  lcd.write(0xFE);
+  lcd.write(0x01);
+  lcd.write(0xFE);
+  lcd.write(0x80);
+  if (mode == NORMAL_MODE) {
+    lcd.print("=== BALL PIT ===");
+  } else if (mode == TIMED_MODE) {
+    lcd.print("== TIMED MODE ==");
+  }
 }
 
 void update_display() {
@@ -117,13 +219,22 @@ void update_display() {
   lcd.write(0xC0);
 
   char buf[17];
-  if (num_balls == 1) {
-    lcd.print("1 ball          ");
-  } else {
-    sprintf(buf, "%d balls", num_balls);
-    sprintf(buf, "%-16s", buf);
-    lcd.print(buf);
+  if (mode == NORMAL_MODE) {
+    if (num_balls == 1) {
+      sprintf(buf, "1 ball          ");
+    } else {
+      sprintf(buf, "%ld balls", num_balls);
+      sprintf(buf, "%-16s", buf);
+    }
+  } else if (mode == TIMED_MODE) {
+    if (num_balls_timed == 1) {
+      sprintf(buf, "1 ball       %02ds", time_remaining);
+    } else {
+      sprintf(buf, "%ld balls", num_balls_timed);
+      sprintf(buf, "%-12s %02ds", buf, time_remaining);
+    }
   }
+  lcd.print(buf);
   display_needs_update = false;
 }
 
