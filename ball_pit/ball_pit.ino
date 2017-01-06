@@ -13,6 +13,9 @@
 #define BALL_DISTANCE_THRESHOLD 300
 #define BALL_DISTANCE_NUM_READS 1
 
+#define TIMER_BEEP_MIN 1000
+#define TIMER_BEEP_MAX 2000
+
 #define TIMER_DURATION 60
 
 #define NUM_MODES 2
@@ -196,7 +199,7 @@ void sense_ball() {
         num_balls_timed++;
         // Balls in timer mode also count for normal mode.
         num_balls++;
-        beep();
+        timer_beep();
       }
     } else if (mode == DEBUG_MODE) {
       beep();
@@ -271,6 +274,13 @@ void update_display() {
 
 void beep() {
   sound(1000 + num_balls, 20000);
+}
+
+void timer_beep() {
+  float time_elapsed = TIMER_DURATION - time_remaining;
+  float t = time_elapsed / TIMER_DURATION;
+  float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
+  sound(freq, 40000);
 }
 
 void play_victory_tune() {
