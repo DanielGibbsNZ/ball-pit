@@ -273,7 +273,7 @@ void update_display() {
 }
 
 void beep() {
-  sound(1000 + num_balls, 20000);
+  sound(1000 + (num_balls / 10), 40000);
 }
 
 void timer_beep() {
