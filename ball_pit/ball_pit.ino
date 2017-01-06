@@ -190,6 +190,8 @@ void sense_ball() {
     } else if (mode == TIMED_MODE) {
       if (timer_running) {
         num_balls_timed++;
+        // Balls in timer mode also count for normal mode.
+        num_balls++;
         beep();
       }
     } else if (mode == DEBUG_MODE) {
