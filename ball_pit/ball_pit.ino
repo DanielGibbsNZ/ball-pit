@@ -25,13 +25,13 @@ SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
 int mode = NORMAL_MODE;
 
-long num_balls = 0;
+unsigned long num_balls = 0;
 float distance = 0;
 
-long num_balls_timed = 0;
+unsigned long num_balls_timed = 0;
 bool timer_running = false;
-int time_remaining = TIMER_DURATION;
-long timer_start = 0;
+unsigned int time_remaining = TIMER_DURATION;
+unsigned long timer_start = 0;
 
 bool is_ball = false;
 bool display_needs_update = false;
@@ -202,8 +202,8 @@ void sense_ball() {
 
 void update_timer() {
   if (timer_running) {
-    long now = millis();
-    long elapsed = now - timer_start;
+    unsigned long now = millis();
+    unsigned long elapsed = now - timer_start;
     float elapsed_seconds = elapsed / 1000.0;
     float remaining_seconds = TIMER_DURATION - elapsed_seconds;
 
@@ -215,8 +215,8 @@ void update_timer() {
       sound(1567, 100000); // G6
       sound(1318, 100000); // E6
       sound(1046, 100000); // C6
-    } else if ((int)remaining_seconds != time_remaining) {
-      time_remaining = (int)remaining_seconds;
+    } else if ((unsigned int)remaining_seconds != time_remaining) {
+      time_remaining = (unsigned int)remaining_seconds;
       display_needs_update = true;
     }
   }
@@ -257,7 +257,7 @@ void update_display() {
       sprintf(buf, "%-12s %02ds", buf, time_remaining);
     }
   } else if (mode == DEBUG_MODE) {
-    sprintf(buf, "%-16d", int(distance));
+    sprintf(buf, "%-16d", (unsigned int)distance);
   }
   lcd.print(buf);
   display_needs_update = false;
@@ -267,9 +267,9 @@ void beep() {
   sound(1000 + num_balls, 20000);
 }
 
-void sound(int freq, long duration) {
+void sound(unsigned int freq, unsigned long duration) {
   unsigned long us;
-  long duration_, i;
+  unsigned long duration_, i;
   us = (1000000 / (freq * 2));
   duration_ = (duration / (us * 2));
   for (i = 0; i < duration_; i++) {
@@ -281,10 +281,10 @@ void sound(int freq, long duration) {
 }
 
 void load_num_balls() {
-  long four = EEPROM.read(0);
-  long three = EEPROM.read(1);
-  long two = EEPROM.read(2);
-  long one = EEPROM.read(3);
+  unsigned long four = EEPROM.read(0);
+  unsigned long three = EEPROM.read(1);
+  unsigned long two = EEPROM.read(2);
+  unsigned long one = EEPROM.read(3);
 
   num_balls = ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
   beep();
