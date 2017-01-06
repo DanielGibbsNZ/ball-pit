@@ -185,7 +185,11 @@ void sense_ball() {
   if (new_is_ball && !is_ball) {
     if (mode == NORMAL_MODE) {
       num_balls++;
-      beep();
+      if (num_balls % 1000 == 0) {
+        play_victory_tune();
+      } else {
+        beep();
+      }
       save_num_balls();
     } else if (mode == TIMED_MODE) {
       if (timer_running) {
@@ -267,6 +271,15 @@ void update_display() {
 
 void beep() {
   sound(1000 + num_balls, 20000);
+}
+
+void play_victory_tune() {
+  sound(392, 100000); // G4
+  sound(523, 100000); // C5
+  sound(659, 100000); // E5
+  sound(783, 225000); // G5
+  sound(659, 75000); // E5
+  sound(783, 600000); // G5
 }
 
 void sound(unsigned int freq, unsigned long duration) {
