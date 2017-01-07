@@ -190,6 +190,8 @@ void sense_ball() {
       num_balls++;
       if (num_balls % 1000 == 0) {
         play_victory_tune();
+      } else if (num_balls % 100 == 0) {
+        play_short_tune();
       } else {
         beep();
       }
@@ -290,6 +292,12 @@ void play_victory_tune() {
   sound(783, 225000); // G5
   sound(659, 75000); // E5
   sound(783, 600000); // G5
+}
+
+void play_short_tune() {
+  sound(1046, 50000); // C6
+  sound(1318, 50000); // E6
+  sound(1567, 50000); // G6
 }
 
 void sound(unsigned int freq, unsigned long duration) {
