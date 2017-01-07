@@ -286,12 +286,12 @@ void timer_beep() {
 }
 
 void play_victory_tune() {
-  sound(392, 100000); // G4
-  sound(523, 100000); // C5
-  sound(659, 100000); // E5
-  sound(783, 225000); // G5
-  sound(659, 75000); // E5
-  sound(783, 600000); // G5
+  sound(783, 100000); // G5
+  sound(1046, 100000); // C6
+  sound(1318, 100000); // E6
+  sound(1567, 225000); // G6
+  sound(1318, 75000); // E6
+  sound(1567, 600000); // G6
 }
 
 void play_short_tune() {
