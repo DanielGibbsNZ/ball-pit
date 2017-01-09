@@ -19,7 +19,7 @@ Setup
 
 The infrared sensor should be mounted in such a way that all balls entering the ball pit pass in front of it. The `BALL_DISTANCE_THRESHOLD` variable should be configured appropriately for the position of the sensor.
 
-#Modes
+Modes
 -----
 
 * Normal mode:
