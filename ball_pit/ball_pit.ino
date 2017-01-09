@@ -26,10 +26,14 @@
 #define TIMER_BEEP_MAX 2000
 #define TIMER_DURATION 60
 
+//Target mode configuration.
+#define TARGET_NUMBER 50
+
 // Mode configuration.
-#define NUM_MODES 2
+#define NUM_MODES 3
 #define NORMAL_MODE 0
 #define TIMED_MODE 1
+#define TARGET_MODE 2
 
 // Debug mode should always be 999 and not be included in the number of modes.
 #define DEBUG_MODE 999
@@ -70,6 +74,15 @@ unsigned int time_remaining = TIMER_DURATION;
 // The time that the timed mode timer started.
 unsigned long timer_start = 0;
 
+// The number of balls remaining in target mode.
+unsigned long balls_remaining = TARGET_NUMBER;
+
+// The number of balls currently counted.
+unsigned long balls_got = 0;
+
+// The time is has taken in target mode.
+unsigned int time_taken = 0;
+
 /////////////////////////
 // SETUP AND MAIN LOOP //
 /////////////////////////
@@ -109,17 +122,22 @@ void loop() {
 
   // Check the distance sensor.
   check_sensor();
-  
+
   // Update the timer if needed.
   if (mode == TIMED_MODE) {
     update_timer();
+  }
+
+  //Update the count if needed
+  if(mode == TARGET_MODE){
+    update_count();
   }
 
   // Update the display every 10 cycles in debug mode.
   if ((loop_count % 10 == 0) && mode == DEBUG_MODE) {
     display_needs_update = true;
   }
-  
+
   // Update the display if needed.
   if (display_title_needs_update) {
     update_display_title();
@@ -167,9 +185,9 @@ void check_buttons() {
       set_num_balls(num_balls + 1);
     }
   } 
-  
-  // If button 4 is pressed in timed mode, start or reset the timer.
-  else if (mode == TIMED_MODE) {
+
+  // If button 4 is pressed in either timed or target modes, start or reset the timer.
+  else if (mode == TIMED_MODE || mode == TARGET_MODE) {
     if (button4 && !timer_running) {
       // If the timer hasn't started yet, start it.
       // Otherwise, reset the timer.
@@ -214,14 +232,14 @@ void enter_next_mode() {
   display_needs_update = true;
 
   // When entering timed mode, reset everything.
-  if (mode == TIMED_MODE) {
+  if (mode == TIMED_MODE || mode == TARGET_MODE) {
     reset_timer();
   }
 }
 
 void enter_debug_mode() {
   if (mode == DEBUG_MODE) {
-      return;
+    return;
   }
   mode = DEBUG_MODE;
   beep();
@@ -251,6 +269,8 @@ void check_sensor() {
       increment_num_balls();
     } else if (mode == TIMED_MODE) {
       increment_num_balls_timed();
+    } else if(mode == TARGET_MODE){
+      increment_num_balls_target();
     } else if (mode == DEBUG_MODE) {
       beep();
     }
@@ -281,11 +301,43 @@ void increment_num_balls_timed() {
   }
 }
 
+void increment_num_balls_target(){
+  if(timer_running){
+    balls_got++;
+    numi_balls++;
+    timer_beep();
+    save_num_balls();
+  }
+}
+
+///////////
+// COUNT //
+///////////
+
+void update_count(){
+  unsigned long now = millis();
+  unsigned long total_time = now - timer_start;
+  float total_seconds = total_time/1000.0;
+  int total_remaining = TARGET_NUMBER - balls_got;
+
+  if(balls_remaining = 0){
+    timer_running = false;
+    display_needs_update = true;
+    play_timer_end_tune();
+  } else if(balls_remaining != total_remaining){
+    balls_remaining = total_remaining;
+    time_taken = (unsigned int)total_seconds;
+    display_needs_update = true;    
+    //print out the time and balls remaining
+  }
+}
+
 ///////////
 // TIMER //
 ///////////
 
 void update_timer() {
+
   if (timer_running) {
     unsigned long now = millis();
     unsigned long elapsed = now - timer_start;
@@ -309,6 +361,9 @@ void reset_timer() {
   timer_running = false;
   time_remaining = TIMER_DURATION;
   timer_start = 0;
+  balls_remaining = TARGET_NUMBER;
+  balls_got = 0;
+
 }
 
 /////////////
@@ -321,11 +376,13 @@ void update_display_title() {
   lcd.write(0x01);
   lcd.write(0xFE);
   lcd.write(0x80);
-  
+
   if (mode == NORMAL_MODE) {
     lcd.print("=== BALL PIT ===");
   } else if (mode == TIMED_MODE) {
     lcd.print("== TIMED MODE ==");
+  } else if(mode == TARGET_NUMBER);
+    lcd.print("== TARGET MODE ==");
   } else if (mode == DEBUG_MODE) {
     lcd.print("---- DEBUG -----");
   }
@@ -342,7 +399,7 @@ void update_display() {
   if (mode == NORMAL_MODE) {
     // Show the total number of balls counted.
     if (num_balls == 1) {
-      sprintf(buf, "1 ball          ");
+      sprintf(buf, "1 ball      ");
     } else {
       sprintf(buf, "%ld balls", num_balls);
       sprintf(buf, "%-16s", buf);
@@ -350,10 +407,18 @@ void update_display() {
   } else if (mode == TIMED_MODE) {
     // Show the number of balls counted and the time remaining.
     if (num_balls_timed == 1) {
-      sprintf(buf, "1 ball       %02ds", time_remaining);
+      sprintf(buf, "1 ball     %02ds", time_remaining);
     } else {
       sprintf(buf, "%ld balls", num_balls_timed);
       sprintf(buf, "%-12s %02ds", buf, time_remaining);
+    }
+  } else if(mode = TARGET_MODE){
+    // Show the number of balls remaining and the current time elapsed.
+    if (balls_remaining == 1){
+      sprintf(buf, "1 ball     %02ds", time_taken);
+    } else{
+      sprintf(buf, "%ld balls", balls_remaining);
+      sprintf(buf, "%-12s %02ds", buf, time_taken);
     }
   } else if (mode == DEBUG_MODE) {
     // Show the sensor value.
