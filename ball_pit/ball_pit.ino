@@ -1,6 +1,10 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 
+///////////////
+// CONSTANTS //
+///////////////
+
 #define LCD_RX_PIN 17
 #define LCD_TX_PIN 17
 #define DISTANCE_SENSOR_PIN 5
@@ -10,34 +14,65 @@
 #define BUTTON_4_PIN 16
 #define SPEAKER_PIN 14
 
+// Memory addresses.
+#define MEMORY_ADDRESS_NUM_BALLS 0x0
+
+// Ball sensing configuration.
 #define BALL_DISTANCE_THRESHOLD 350
 #define BALL_DISTANCE_NUM_READS 1
 
+// Timed mode configuration.
 #define TIMER_BEEP_MIN 1000
 #define TIMER_BEEP_MAX 2000
-
 #define TIMER_DURATION 60
 
+// Mode configuration.
 #define NUM_MODES 2
-
 #define NORMAL_MODE 0
 #define TIMED_MODE 1
+
+// Debug mode should always be 999 and not be included in the number of modes.
 #define DEBUG_MODE 999
 
+/////////////
+// GLOBALS //
+/////////////
+
+// The LCD display.
 SoftwareSerial lcd = SoftwareSerial(LCD_RX_PIN, LCD_TX_PIN);
 
+// If the LCD display needs an update.
+bool display_needs_update = false;
+bool display_title_needs_update = false;
+
+// Whether there is currently a ball in front of the sensor.
+// Used to detect changes in the sensor.
+bool is_ball = false;
+
+// The last value read from the distance sensor.
+float sensor_value = 0;
+
+// The current mode.
 int mode = NORMAL_MODE;
 
+// The total number of balls counted.
 unsigned long num_balls = 0;
-float distance = 0;
 
-unsigned long num_balls_timed = 0;
+// If the timer is running.
 bool timer_running = false;
+
+// The number of balls counted during timed mode.
+unsigned long num_balls_timed = 0;
+
+// The number of seconds remaining in timed mode.
 unsigned int time_remaining = TIMER_DURATION;
+
+// The time that the timed mode timer started.
 unsigned long timer_start = 0;
 
-bool is_ball = false;
-bool display_needs_update = false;
+/////////////////////////
+// SETUP AND MAIN LOOP //
+/////////////////////////
 
 void setup() {
   // Set up LCD display.
@@ -49,96 +84,99 @@ void setup() {
   pinMode(SPEAKER_PIN, OUTPUT);
   pinMode(BUTTON_1_PIN, INPUT);
   pinMode(BUTTON_2_PIN, INPUT);
+  pinMode(BUTTON_3_PIN, INPUT);
+  pinMode(BUTTON_4_PIN, INPUT);
 
   // Start the LCD and display the title.
   lcd.begin(9600);
   update_display_title();
 
   // Play boot sound.
-  sound(1046, 50000); // C6
-  sound(1174, 50000); // D6
-  sound(1318, 50000); // E6
-  sound(1396, 50000); // F6
-  sound(1567, 50000); // G6
-
-  // Sense the ball, then ignore the outcome.
-  sense_ball();
+  play_boot_tune();
 
   delay(1000);
   load_num_balls();
 }
 
-int loop_count = 0;
-
 void loop() {
-  sense_ball();
-
+  // Check the buttons every 20 cycles.
+  static int loop_count = 0;
   if (loop_count % 20 == 0) {
     check_buttons();
     loop_count = 0;
   }
+  loop_count++;
 
+  // Check the distance sensor.
+  check_sensor();
+  
+  // Update the timer if needed.
   if (mode == TIMED_MODE) {
     update_timer();
   }
 
-  if (display_needs_update || (loop_count % 10 == 0 && mode == DEBUG_MODE)) {
+  // Update the display every 10 cycles in debug mode.
+  if ((loop_count % 10 == 0) && mode == DEBUG_MODE) {
+    display_needs_update = true;
+  }
+  
+  // Update the display if needed.
+  if (display_title_needs_update) {
+    update_display_title();
+  }
+  if (display_needs_update) {
     update_display();
   }
 
-  loop_count++;
-
+  // Loop roughly 100 times a second.
   delay(10);
 }
 
+/////////////
+// BUTTONS //
+/////////////
+
 void check_buttons() {
-  // Buttons 1 and 2 used to change ball count.
-  // Button 3 used to change mode.
-  // Button 4 used to start/stop timer in timed mode.
   bool button1 = (digitalRead(BUTTON_1_PIN) == 0);
   bool button2 = (digitalRead(BUTTON_2_PIN) == 0);
   bool button3 = (digitalRead(BUTTON_3_PIN) == 0);
   bool button4 = (digitalRead(BUTTON_4_PIN) == 0);
 
+  // If button 3 and button 4 are pressed together, enter debug mode.
   if (button3 && button4) {
-    if (mode == DEBUG_MODE) {
-      return;
-    }
-    mode = DEBUG_MODE;
-    update_display_title();
-    beep();
-    display_needs_update = true;
+    enter_debug_mode();
     return;
   }
 
+  // If button 3 is pressed, enter the next mode.
+  if (button3) {
+    enter_next_mode();
+    return;
+  }
+
+  // If buttons 1 and/or 2 are pressed in normal mode, adjust the number of balls counted.
+  //   Button 1: Increment the count by 10
+  //   Button 2: Increment the count by 1
+  //   Buttons 1 and 2: Reset the count to 0
   if (mode == NORMAL_MODE) {
     if (button1 && button2) {
-      num_balls = 0;
-      beep();
-      save_num_balls();
-      display_needs_update = true;
+      set_num_balls(0);
     } else if (button1) {
-      num_balls += 10;
-      beep();
-      save_num_balls();
-      display_needs_update = true;
+      set_num_balls(num_balls + 10);
     } else if (button2) {
-      num_balls++;
-      beep();
-      save_num_balls();
-      display_needs_update = true;
+      set_num_balls(num_balls + 1);
     }
-  } else if (mode == TIMED_MODE) {
+  } 
+  
+  // If button 4 is pressed in timed mode, start or reset the timer.
+  else if (mode == TIMED_MODE) {
     if (button4 && !timer_running) {
       // If the timer hasn't started yet, start it.
       // Otherwise, reset the timer.
       if (timer_start == 0) {
         timer_start = millis();
         timer_running = true;
-        sound(1046, 100000); // C6
-        sound(1318, 100000); // E6
-        sound(1567, 100000); // G6
-        sound(2093, 100000); // C7
+        play_timer_start_tune();
         display_needs_update = true;
       } else {
         reset_timer();
@@ -147,69 +185,105 @@ void check_buttons() {
       }
     }
   }
+}
 
-  if (button3) {
-    if (mode == DEBUG_MODE) {
-      mode = NORMAL_MODE;
-    } else {
-      // Switch to the next mode.
-      mode = (mode + 1) % NUM_MODES;
-    }
+void set_num_balls(unsigned long value) {
+  num_balls = value;
+  save_num_balls();
+  beep();
+  display_needs_update = true;
+}
 
-    update_display_title();
-    beep();
-    display_needs_update = true;
+///////////
+// MODES //
+///////////
 
-    // When entering timed mode, reset everything.
-    if (mode == TIMED_MODE) {
-      reset_timer();
-    }
+void enter_next_mode() {
+  // If the current mode is debug, switch back to normal mode.
+  // Otherwise switch to the next mode.
+  if (mode == DEBUG_MODE) {
+    mode = NORMAL_MODE;
+  } else {
+    // Switch to the next mode.
+    mode = (mode + 1) % NUM_MODES;
+  }
+
+  // Beep and update the display.
+  beep();
+  display_title_needs_update = true;
+  display_needs_update = true;
+
+  // When entering timed mode, reset everything.
+  if (mode == TIMED_MODE) {
+    reset_timer();
   }
 }
 
-void reset_timer() {
-  num_balls_timed = 0;
-  timer_running = false;
-  time_remaining = TIMER_DURATION;
-  timer_start = 0;
+void enter_debug_mode() {
+  if (mode == DEBUG_MODE) {
+      return;
+  }
+  mode = DEBUG_MODE;
+  beep();
+  display_title_needs_update = true;
+  display_needs_update = true;
 }
 
-void sense_ball() {
-  // Read the distance sensor pin 5 times and take the average to eliminate any noise.
+////////////
+// SENSOR //
+////////////
+
+void check_sensor() {
+  // Read the distance sensor pin several times and take the average to eliminate any noise.
   float distance_sum = 0;
-  int i;
+  unsigned int i;
   for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
     distance_sum += analogRead(DISTANCE_SENSOR_PIN);
   }
-  distance = distance_sum / BALL_DISTANCE_NUM_READS;
+  sensor_value = distance_sum / BALL_DISTANCE_NUM_READS;
 
-  // Detect whether a new ball has been seen or not.
-  bool new_is_ball = distance > BALL_DISTANCE_THRESHOLD;
-  if (new_is_ball && !is_ball) {
+  // Detect whether there is a ball in front of the sensor.
+  bool is_ball_now = sensor_value > BALL_DISTANCE_THRESHOLD;
+
+  // If the sensor previously didn't sense a ball and it does now, then a ball has been detected.
+  if (is_ball_now && !is_ball) {
     if (mode == NORMAL_MODE) {
-      num_balls++;
-      if (num_balls % 1000 == 0) {
-        play_victory_tune();
-      } else if (num_balls % 100 == 0) {
-        play_short_tune();
-      } else {
-        beep();
-      }
-      save_num_balls();
+      increment_num_balls();
     } else if (mode == TIMED_MODE) {
-      if (timer_running) {
-        num_balls_timed++;
-        // Balls in timer mode also count for normal mode.
-        num_balls++;
-        timer_beep();
-      }
+      increment_num_balls_timed();
     } else if (mode == DEBUG_MODE) {
       beep();
     }
     display_needs_update = true;
   }
-  is_ball = new_is_ball;
+  is_ball = is_ball_now;
 }
+
+void increment_num_balls() {
+  num_balls++;
+  if (num_balls % 1000 == 0) {
+    play_victory_tune();
+  } else if (num_balls % 100 == 0) {
+    play_short_tune();
+  } else {
+    beep();
+  }
+  save_num_balls();
+}
+
+void increment_num_balls_timed() {
+  if (timer_running) {
+    num_balls_timed++;
+    // Balls in timer mode also count for normal mode.
+    num_balls++;
+    timer_beep();
+    save_num_balls();
+  }
+}
+
+///////////
+// TIMER //
+///////////
 
 void update_timer() {
   if (timer_running) {
@@ -222,10 +296,7 @@ void update_timer() {
       time_remaining = 0;
       timer_running = false;
       display_needs_update = true;
-      sound(2093, 100000); // C7
-      sound(1567, 100000); // G6
-      sound(1318, 100000); // E6
-      sound(1046, 100000); // C6
+      play_timer_end_tune();
     } else if ((unsigned int)remaining_seconds != time_remaining) {
       time_remaining = (unsigned int)remaining_seconds;
       display_needs_update = true;
@@ -233,11 +304,24 @@ void update_timer() {
   }
 }
 
+void reset_timer() {
+  num_balls_timed = 0;
+  timer_running = false;
+  time_remaining = TIMER_DURATION;
+  timer_start = 0;
+}
+
+/////////////
+// DISPLAY //
+/////////////
+
 void update_display_title() {
+  // Update the title of the display.
   lcd.write(0xFE);
   lcd.write(0x01);
   lcd.write(0xFE);
   lcd.write(0x80);
+  
   if (mode == NORMAL_MODE) {
     lcd.print("=== BALL PIT ===");
   } else if (mode == TIMED_MODE) {
@@ -245,6 +329,7 @@ void update_display_title() {
   } else if (mode == DEBUG_MODE) {
     lcd.print("---- DEBUG -----");
   }
+  display_title_needs_update = false;
 }
 
 void update_display() {
@@ -252,8 +337,10 @@ void update_display() {
   lcd.write(0xFE);
   lcd.write(0xC0);
 
+  // Write the line to a buffer before printing so that we can pad it with spaces.
   char buf[17];
   if (mode == NORMAL_MODE) {
+    // Show the total number of balls counted.
     if (num_balls == 1) {
       sprintf(buf, "1 ball          ");
     } else {
@@ -261,6 +348,7 @@ void update_display() {
       sprintf(buf, "%-16s", buf);
     }
   } else if (mode == TIMED_MODE) {
+    // Show the number of balls counted and the time remaining.
     if (num_balls_timed == 1) {
       sprintf(buf, "1 ball       %02ds", time_remaining);
     } else {
@@ -268,21 +356,42 @@ void update_display() {
       sprintf(buf, "%-12s %02ds", buf, time_remaining);
     }
   } else if (mode == DEBUG_MODE) {
-    sprintf(buf, "%-16d", (unsigned int)distance);
+    // Show the sensor value.
+    sprintf(buf, "%-16d", (unsigned int)sensor_value);
   }
   lcd.print(buf);
   display_needs_update = false;
 }
 
+/////////////
+// SPEAKER //
+/////////////
+
 void beep() {
+  // The default beep gets slightly higher as the number of balls increases.
   sound(1000 + (num_balls / 10), 40000);
 }
 
 void timer_beep() {
+  // The timed mode beep gets higher as there is less time remaining.
   float time_elapsed = TIMER_DURATION - time_remaining;
   float t = time_elapsed / TIMER_DURATION;
   float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
   sound(freq, 40000);
+}
+
+void play_boot_tune() {
+  sound(1046, 50000); // C6
+  sound(1174, 50000); // D6
+  sound(1318, 50000); // E6
+  sound(1396, 50000); // F6
+  sound(1567, 50000); // G6
+}
+
+void play_short_tune() {
+  sound(1046, 50000); // C6
+  sound(1318, 50000); // E6
+  sound(1567, 50000); // G6
 }
 
 void play_victory_tune() {
@@ -294,18 +403,26 @@ void play_victory_tune() {
   sound(1567, 600000); // G6
 }
 
-void play_short_tune() {
-  sound(1046, 50000); // C6
-  sound(1318, 50000); // E6
-  sound(1567, 50000); // G6
+void play_timer_start_tune() {
+  sound(1046, 100000); // C6
+  sound(1318, 100000); // E6
+  sound(1567, 100000); // G6
+  sound(2093, 100000); // C7
+}
+
+void play_timer_end_tune() {
+  sound(2093, 100000); // C7
+  sound(1567, 100000); // G6
+  sound(1318, 100000); // E6
+  sound(1046, 100000); // C6
 }
 
 void sound(unsigned int freq, unsigned long duration) {
   unsigned long us;
-  unsigned long duration_, i;
+  unsigned long num_cycles, i;
   us = (1000000 / (freq * 2));
-  duration_ = (duration / (us * 2));
-  for (i = 0; i < duration_; i++) {
+  num_cycles = (duration / (us * 2));
+  for (i = 0; i < num_cycles; i++) {
     digitalWrite(SPEAKER_PIN, HIGH);
     delayMicroseconds(us);
     digitalWrite(SPEAKER_PIN, LOW);
@@ -313,25 +430,37 @@ void sound(unsigned int freq, unsigned long duration) {
   }
 }
 
-void load_num_balls() {
-  unsigned long four = EEPROM.read(0);
-  unsigned long three = EEPROM.read(1);
-  unsigned long two = EEPROM.read(2);
-  unsigned long one = EEPROM.read(3);
+////////////
+// MEMORY //
+////////////
 
-  num_balls = ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+void load_num_balls() {
+  num_balls = load_unsigned_long(MEMORY_ADDRESS_NUM_BALLS);
   beep();
   display_needs_update = true;
 }
 
 void save_num_balls() {
-  byte four = (num_balls & 0xFF);
-  byte three = ((num_balls >> 8) & 0xFF);
-  byte two = ((num_balls >> 16) & 0xFF);
-  byte one = ((num_balls >> 24) & 0xFF);
+  save_unsigned_long(MEMORY_ADDRESS_NUM_BALLS, num_balls);
+}
 
-  EEPROM.write(0, four);
-  EEPROM.write(1, three);
-  EEPROM.write(2, two);
-  EEPROM.write(3, one);
+unsigned load_unsigned_long(int address) {
+  unsigned long four = EEPROM.read(address);
+  unsigned long three = EEPROM.read(address + 1);
+  unsigned long two = EEPROM.read(address + 2);
+  unsigned long one = EEPROM.read(address + 3);
+
+  return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+}
+
+void save_unsigned_long(int address, unsigned long value) {
+  byte four = (value & 0xFF);
+  byte three = ((value >> 8) & 0xFF);
+  byte two = ((value >> 16) & 0xFF);
+  byte one = ((value >> 24) & 0xFF);
+
+  EEPROM.write(address, four);
+  EEPROM.write(address + 1, three);
+  EEPROM.write(address + 2, two);
+  EEPROM.write(address + 3, one);
 }
