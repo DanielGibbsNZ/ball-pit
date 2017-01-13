@@ -28,6 +28,7 @@
 
 // Target mode configuration.
 #define TARGET_NUMBER 50
+#define TARGET_MAX_MINUTES 5
 
 // Mode configuration.
 #define NUM_MODES 3
@@ -341,7 +342,7 @@ void update_timer() {
         timer_running = false;
         display_needs_update = true;
         play_timer_end_tune();
-      } else if ((unsigned int)elapsed_seconds >= 10 * 60) {
+      } else if ((unsigned int)elapsed_seconds >= TARGET_MAX_MINUTES * 60) {
         timer_running = false;
         target_failed = true;
         display_needs_update = true;
