@@ -88,66 +88,66 @@ unsigned int time_taken = 0;
 /////////////////////////
 
 void setup() {
-    // Set up LCD display.
-    digitalWrite(LCD_TX_PIN, HIGH);
-    delay(1000);
+  // Set up LCD display.
+  digitalWrite(LCD_TX_PIN, HIGH);
+  delay(1000);
 
-    // Set up the pin modes.
-    pinMode(LCD_TX_PIN, OUTPUT);
-    pinMode(SPEAKER_PIN, OUTPUT);
-    pinMode(BUTTON_1_PIN, INPUT);
-    pinMode(BUTTON_2_PIN, INPUT);
-    pinMode(BUTTON_3_PIN, INPUT);
-    pinMode(BUTTON_4_PIN, INPUT);
+  // Set up the pin modes.
+  pinMode(LCD_TX_PIN, OUTPUT);
+  pinMode(SPEAKER_PIN, OUTPUT);
+  pinMode(BUTTON_1_PIN, INPUT);
+  pinMode(BUTTON_2_PIN, INPUT);
+  pinMode(BUTTON_3_PIN, INPUT);
+  pinMode(BUTTON_4_PIN, INPUT);
 
-    // Start the LCD and display the title.
-    lcd.begin(9600);
-    update_display_title();
+  // Start the LCD and display the title.
+  lcd.begin(9600);
+  update_display_title();
 
-    // Play boot sound.
-    play_boot_tune();
+  // Play boot sound.
+  play_boot_tune();
 
-    delay(1000);
-    load_num_balls();
+  delay(1000);
+  load_num_balls();
 }
 
 void loop() {
-    // Check the buttons every 20 cycles.
-    static int loop_count = 0;
-    if (loop_count % 20 == 0) {
-        check_buttons();
-        loop_count = 0;
-    }
-    loop_count++;
+  // Check the buttons every 20 cycles.
+  static int loop_count = 0;
+  if (loop_count % 20 == 0) {
+    check_buttons();
+    loop_count = 0;
+  }
+  loop_count++;
 
-    // Check the distance sensor.
-    check_sensor();
+  // Check the distance sensor.
+  check_sensor();
 
-    // Update the timer if needed.
-    if (mode == TIMED_MODE) {
-        update_timer();
-    }
+  // Update the timer if needed.
+  if (mode == TIMED_MODE) {
+    update_timer();
+  }
 
-    //Update the count if needed
-    if(mode == TARGET_MODE){
-        update_count();
-    }
+  //Update the count if needed
+  if(mode == TARGET_MODE){
+    update_count();
+  }
 
-    // Update the display every 10 cycles in debug mode.
-    if ((loop_count % 10 == 0) && mode == DEBUG_MODE) {
-        display_needs_update = true;
-    }
+  // Update the display every 10 cycles in debug mode.
+  if ((loop_count % 10 == 0) && mode == DEBUG_MODE) {
+    display_needs_update = true;
+  }
 
-    // Update the display if needed.
-    if (display_title_needs_update) {
-        update_display_title();
-    }
-    if (display_needs_update) {
-        update_display();
-    }
+  // Update the display if needed.
+  if (display_title_needs_update) {
+    update_display_title();
+  }
+  if (display_needs_update) {
+    update_display();
+  }
 
-    // Loop roughly 100 times a second.
-    delay(10);
+  // Loop roughly 100 times a second.
+  delay(10);
 }
 
 /////////////
@@ -155,61 +155,61 @@ void loop() {
 /////////////
 
 void check_buttons() {
-    bool button1 = (digitalRead(BUTTON_1_PIN) == 0);
-    bool button2 = (digitalRead(BUTTON_2_PIN) == 0);
-    bool button3 = (digitalRead(BUTTON_3_PIN) == 0);
-    bool button4 = (digitalRead(BUTTON_4_PIN) == 0);
+  bool button1 = (digitalRead(BUTTON_1_PIN) == 0);
+  bool button2 = (digitalRead(BUTTON_2_PIN) == 0);
+  bool button3 = (digitalRead(BUTTON_3_PIN) == 0);
+  bool button4 = (digitalRead(BUTTON_4_PIN) == 0);
 
-    // If button 3 and button 4 are pressed together, enter debug mode.
-    if (button3 && button4) {
-        enter_debug_mode();
-        return;
+  // If button 3 and button 4 are pressed together, enter debug mode.
+  if (button3 && button4) {
+    enter_debug_mode();
+    return;
+  }
+
+  // If button 3 is pressed, enter the next mode.
+  if (button3) {
+    enter_next_mode();
+    return;
+  }
+
+  // If buttons 1 and/or 2 are pressed in normal mode, adjust the number of balls counted.
+  //   Button 1: Increment the count by 10
+  //   Button 2: Increment the count by 1
+  //   Buttons 1 and 2: Reset the count to 0
+  if (mode == NORMAL_MODE) {
+    if (button1 && button2) {
+      set_num_balls(0);
+    } else if (button1) {
+      set_num_balls(num_balls + 10);
+    } else if (button2) {
+      set_num_balls(num_balls + 1);
     }
+  } 
 
-    // If button 3 is pressed, enter the next mode.
-    if (button3) {
-        enter_next_mode();
-        return;
+  // If button 4 is pressed in either timed or target modes, start or reset the timer.
+  else if (mode == TIMED_MODE || mode == TARGET_MODE) {
+    if (button4 && !timer_running) {
+      // If the timer hasn't started yet, start it.
+      // Otherwise, reset the timer.
+      if (timer_start == 0) {
+        timer_start = millis();
+        timer_running = true;
+        play_timer_start_tune();
+        display_needs_update = true;
+      } else {
+        reset_timer();
+        beep();
+        display_needs_update = true;
+      }
     }
-
-    // If buttons 1 and/or 2 are pressed in normal mode, adjust the number of balls counted.
-    //   Button 1: Increment the count by 10
-    //   Button 2: Increment the count by 1
-    //   Buttons 1 and 2: Reset the count to 0
-    if (mode == NORMAL_MODE) {
-        if (button1 && button2) {
-            set_num_balls(0);
-        } else if (button1) {
-            set_num_balls(num_balls + 10);
-        } else if (button2) {
-            set_num_balls(num_balls + 1);
-        }
-    } 
-
-    // If button 4 is pressed in either timed or target modes, start or reset the timer.
-    else if (mode == TIMED_MODE || mode == TARGET_MODE) {
-        if (button4 && !timer_running) {
-            // If the timer hasn't started yet, start it.
-            // Otherwise, reset the timer.
-            if (timer_start == 0) {
-                timer_start = millis();
-                timer_running = true;
-                play_timer_start_tune();
-                display_needs_update = true;
-            } else {
-                reset_timer();
-                beep();
-                display_needs_update = true;
-            }
-        }
-    }
+  }
 }
 
 void set_num_balls(unsigned long value) {
-    num_balls = value;
-    save_num_balls();
-    beep();
-    display_needs_update = true;
+  num_balls = value;
+  save_num_balls();
+  beep();
+  display_needs_update = true;
 }
 
 ///////////
@@ -217,34 +217,34 @@ void set_num_balls(unsigned long value) {
 ///////////
 
 void enter_next_mode() {
-    // If the current mode is debug, switch back to normal mode.
-    // Otherwise switch to the next mode.
-    if (mode == DEBUG_MODE) {
-        mode = NORMAL_MODE;
-    } else {
-        // Switch to the next mode.
-        mode = (mode + 1) % NUM_MODES;
-    }
+  // If the current mode is debug, switch back to normal mode.
+  // Otherwise switch to the next mode.
+  if (mode == DEBUG_MODE) {
+    mode = NORMAL_MODE;
+  } else {
+    // Switch to the next mode.
+    mode = (mode + 1) % NUM_MODES;
+  }
 
-    // Beep and update the display.
-    beep();
-    display_title_needs_update = true;
-    display_needs_update = true;
+  // Beep and update the display.
+  beep();
+  display_title_needs_update = true;
+  display_needs_update = true;
 
-    // When entering timed mode, reset everything.
-    if (mode == TIMED_MODE || mode == TARGET_MODE) {
-        reset_timer();
-    }
+  // When entering timed mode, reset everything.
+  if (mode == TIMED_MODE || mode == TARGET_MODE) {
+    reset_timer();
+  }
 }
 
 void enter_debug_mode() {
-    if (mode == DEBUG_MODE) {
-        return;
-    }
-    mode = DEBUG_MODE;
-    beep();
-    display_title_needs_update = true;
-    display_needs_update = true;
+  if (mode == DEBUG_MODE) {
+    return;
+  }
+  mode = DEBUG_MODE;
+  beep();
+  display_title_needs_update = true;
+  display_needs_update = true;
 }
 
 ////////////
@@ -252,62 +252,62 @@ void enter_debug_mode() {
 ////////////
 
 void check_sensor() {
-    // Read the distance sensor pin several times and take the average to eliminate any noise.
-    float distance_sum = 0;
-    unsigned int i;
-    for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
-        distance_sum += analogRead(DISTANCE_SENSOR_PIN);
-    }
-    sensor_value = distance_sum / BALL_DISTANCE_NUM_READS;
+  // Read the distance sensor pin several times and take the average to eliminate any noise.
+  float distance_sum = 0;
+  unsigned int i;
+  for (i = 0; i < BALL_DISTANCE_NUM_READS; i++) {
+    distance_sum += analogRead(DISTANCE_SENSOR_PIN);
+  }
+  sensor_value = distance_sum / BALL_DISTANCE_NUM_READS;
 
-    // Detect whether there is a ball in front of the sensor.
-    bool is_ball_now = sensor_value > BALL_DISTANCE_THRESHOLD;
+  // Detect whether there is a ball in front of the sensor.
+  bool is_ball_now = sensor_value > BALL_DISTANCE_THRESHOLD;
 
-    // If the sensor previously didn't sense a ball and it does now, then a ball has been detected.
-    if (is_ball_now && !is_ball) {
-        if (mode == NORMAL_MODE) {
-            increment_num_balls();
-        } else if (mode == TIMED_MODE) {
-            increment_num_balls_timed();
-        } else if(mode == TARGET_MODE){
-            increment_num_balls_target();
-        } else if (mode == DEBUG_MODE) {
-            beep();
-        }
-        display_needs_update = true;
+  // If the sensor previously didn't sense a ball and it does now, then a ball has been detected.
+  if (is_ball_now && !is_ball) {
+    if (mode == NORMAL_MODE) {
+      increment_num_balls();
+    } else if (mode == TIMED_MODE) {
+      increment_num_balls_timed();
+    } else if(mode == TARGET_MODE){
+      increment_num_balls_target();
+    } else if (mode == DEBUG_MODE) {
+      beep();
     }
-    is_ball = is_ball_now;
+    display_needs_update = true;
+  }
+  is_ball = is_ball_now;
 }
 
 void increment_num_balls() {
-    num_balls++;
-    if (num_balls % 1000 == 0) {
-        play_victory_tune();
-    } else if (num_balls % 100 == 0) {
-        play_short_tune();
-    } else {
-        beep();
-    }
-    save_num_balls();
+  num_balls++;
+  if (num_balls % 1000 == 0) {
+    play_victory_tune();
+  } else if (num_balls % 100 == 0) {
+    play_short_tune();
+  } else {
+    beep();
+  }
+  save_num_balls();
 }
 
 void increment_num_balls_timed() {
-    if (timer_running) {
-        num_balls_timed++;
-        // Balls in timer mode also count for normal mode.
-        num_balls++;
-        timer_beep();
-        save_num_balls();
-    }
+  if (timer_running) {
+    num_balls_timed++;
+    // Balls in timer mode also count for normal mode.
+    num_balls++;
+    timer_beep();
+    save_num_balls();
+  }
 }
 
 void increment_num_balls_target(){
-    if(timer_running){
-        balls_got++;
-        numi_balls++;
-        timer_beep();
-        save_num_balls();
-    }
+  if(timer_running){
+    balls_got++;
+    numi_balls++;
+    timer_beep();
+    save_num_balls();
+  }
 }
 
 ///////////
@@ -315,21 +315,21 @@ void increment_num_balls_target(){
 ///////////
 
 void update_count(){
-    unsigned long now = millis();
-    unsigned long total_time = now - timer_start;
-    float total_seconds = total_time/1000.0;
-    int total_remaining = TARGET_NUMBER - balls_got;
+  unsigned long now = millis();
+  unsigned long total_time = now - timer_start;
+  float total_seconds = total_time/1000.0;
+  int total_remaining = TARGET_NUMBER - balls_got;
 
-    if(balls_remaining = 0){
-        timer_running = false;
-        display_needs_update = true;
-        play_timer_end_tune();
-    } else if(balls_remaining != total_remaining){
-        balls_remaining = total_remaining;
-        time_taken = (unsigned int)total_seconds;
-        display_needs_update = true;        
-        //print out the time and balls remaining
-    }
+  if(balls_remaining = 0){
+    timer_running = false;
+    display_needs_update = true;
+    play_timer_end_tune();
+  } else if(balls_remaining != total_remaining){
+    balls_remaining = total_remaining;
+    time_taken = (unsigned int)total_seconds;
+    display_needs_update = true;    
+    //print out the time and balls remaining
+  }
 }
 
 ///////////
@@ -338,31 +338,31 @@ void update_count(){
 
 void update_timer() {
 
-    if (timer_running) {
-        unsigned long now = millis();
-        unsigned long elapsed = now - timer_start;
-        float elapsed_seconds = elapsed / 1000.0;
-        float remaining_seconds = TIMER_DURATION - elapsed_seconds;
+  if (timer_running) {
+    unsigned long now = millis();
+    unsigned long elapsed = now - timer_start;
+    float elapsed_seconds = elapsed / 1000.0;
+    float remaining_seconds = TIMER_DURATION - elapsed_seconds;
 
-        if (remaining_seconds < 0) {
-            time_remaining = 0;
-            timer_running = false;
-            display_needs_update = true;
-            play_timer_end_tune();
-        } else if ((unsigned int)remaining_seconds != time_remaining) {
-            time_remaining = (unsigned int)remaining_seconds;
-            display_needs_update = true;
-        }
+    if (remaining_seconds < 0) {
+      time_remaining = 0;
+      timer_running = false;
+      display_needs_update = true;
+      play_timer_end_tune();
+    } else if ((unsigned int)remaining_seconds != time_remaining) {
+      time_remaining = (unsigned int)remaining_seconds;
+      display_needs_update = true;
     }
+  }
 }
 
 void reset_timer() {
-    num_balls_timed = 0;
-    timer_running = false;
-    time_remaining = TIMER_DURATION;
-    timer_start = 0;
-    balls_remaining = TARGET_NUMBER;
-    balls_got = 0;
+  num_balls_timed = 0;
+  timer_running = false;
+  time_remaining = TIMER_DURATION;
+  timer_start = 0;
+  balls_remaining = TARGET_NUMBER;
+  balls_got = 0;
 
 }
 
@@ -371,61 +371,61 @@ void reset_timer() {
 /////////////
 
 void update_display_title() {
-    // Update the title of the display.
-    lcd.write(0xFE);
-    lcd.write(0x01);
-    lcd.write(0xFE);
-    lcd.write(0x80);
+  // Update the title of the display.
+  lcd.write(0xFE);
+  lcd.write(0x01);
+  lcd.write(0xFE);
+  lcd.write(0x80);
 
-    if (mode == NORMAL_MODE) {
-        lcd.print("=== BALL PIT ===");
-    } else if (mode == TIMED_MODE) {
-        lcd.print("== TIMED MODE ==");
-    } else if(mode == TARGET_NUMBER);
-        lcd.print("== TARGET MODE ==");
-    } else if (mode == DEBUG_MODE) {
-        lcd.print("---- DEBUG -----");
-    }
-    display_title_needs_update = false;
+  if (mode == NORMAL_MODE) {
+    lcd.print("=== BALL PIT ===");
+  } else if (mode == TIMED_MODE) {
+    lcd.print("== TIMED MODE ==");
+  } else if(mode == TARGET_NUMBER);
+    lcd.print("== TARGET MODE ==");
+  } else if (mode == DEBUG_MODE) {
+    lcd.print("---- DEBUG -----");
+  }
+  display_title_needs_update = false;
 }
 
 void update_display() {
-    // Update the second line of the LCD display.
-    lcd.write(0xFE);
-    lcd.write(0xC0);
+  // Update the second line of the LCD display.
+  lcd.write(0xFE);
+  lcd.write(0xC0);
 
-    // Write the line to a buffer before printing so that we can pad it with spaces.
-    char buf[17];
-    if (mode == NORMAL_MODE) {
-        // Show the total number of balls counted.
-        if (num_balls == 1) {
-            sprintf(buf, "1 ball          ");
-        } else {
-            sprintf(buf, "%ld balls", num_balls);
-            sprintf(buf, "%-16s", buf);
-        }
-    } else if (mode == TIMED_MODE) {
-        // Show the number of balls counted and the time remaining.
-        if (num_balls_timed == 1) {
-            sprintf(buf, "1 ball       %02ds", time_remaining);
-        } else {
-            sprintf(buf, "%ld balls", num_balls_timed);
-            sprintf(buf, "%-12s %02ds", buf, time_remaining);
-        }
-    } else if(mode = TARGET_MODE){
-        // Show the number of balls remaining and the current time elapsed.
-        if (balls_remaining == 1){
-            sprintf(buf, "1 ball       %02ds", time_taken);
-        } else{
-            sprintf(buf, "%ld balls", balls_remaining);
-            sprintf(buf, "%-12s %02ds", buf, time_taken);
-        }
-    } else if (mode == DEBUG_MODE) {
-        // Show the sensor value.
-        sprintf(buf, "%-16d", (unsigned int)sensor_value);
+  // Write the line to a buffer before printing so that we can pad it with spaces.
+  char buf[17];
+  if (mode == NORMAL_MODE) {
+    // Show the total number of balls counted.
+    if (num_balls == 1) {
+      sprintf(buf, "1 ball      ");
+    } else {
+      sprintf(buf, "%ld balls", num_balls);
+      sprintf(buf, "%-16s", buf);
     }
-    lcd.print(buf);
-    display_needs_update = false;
+  } else if (mode == TIMED_MODE) {
+    // Show the number of balls counted and the time remaining.
+    if (num_balls_timed == 1) {
+      sprintf(buf, "1 ball     %02ds", time_remaining);
+    } else {
+      sprintf(buf, "%ld balls", num_balls_timed);
+      sprintf(buf, "%-12s %02ds", buf, time_remaining);
+    }
+  } else if(mode = TARGET_MODE){
+    // Show the number of balls remaining and the current time elapsed.
+    if (balls_remaining == 1){
+      sprintf(buf, "1 ball     %02ds", time_taken);
+    } else{
+      sprintf(buf, "%ld balls", balls_remaining);
+      sprintf(buf, "%-12s %02ds", buf, time_taken);
+    }
+  } else if (mode == DEBUG_MODE) {
+    // Show the sensor value.
+    sprintf(buf, "%-16d", (unsigned int)sensor_value);
+  }
+  lcd.print(buf);
+  display_needs_update = false;
 }
 
 /////////////
@@ -433,66 +433,66 @@ void update_display() {
 /////////////
 
 void beep() {
-    // The default beep gets slightly higher as the number of balls increases.
-    sound(1000 + (num_balls / 10), 40000);
+  // The default beep gets slightly higher as the number of balls increases.
+  sound(1000 + (num_balls / 10), 40000);
 }
 
 void timer_beep() {
-    // The timed mode beep gets higher as there is less time remaining.
-    float time_elapsed = TIMER_DURATION - time_remaining;
-    float t = time_elapsed / TIMER_DURATION;
-    float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
-    sound(freq, 40000);
+  // The timed mode beep gets higher as there is less time remaining.
+  float time_elapsed = TIMER_DURATION - time_remaining;
+  float t = time_elapsed / TIMER_DURATION;
+  float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
+  sound(freq, 40000);
 }
 
 void play_boot_tune() {
-    sound(1046, 50000); // C6
-    sound(1174, 50000); // D6
-    sound(1318, 50000); // E6
-    sound(1396, 50000); // F6
-    sound(1567, 50000); // G6
+  sound(1046, 50000); // C6
+  sound(1174, 50000); // D6
+  sound(1318, 50000); // E6
+  sound(1396, 50000); // F6
+  sound(1567, 50000); // G6
 }
 
 void play_short_tune() {
-    sound(1046, 50000); // C6
-    sound(1318, 50000); // E6
-    sound(1567, 50000); // G6
+  sound(1046, 50000); // C6
+  sound(1318, 50000); // E6
+  sound(1567, 50000); // G6
 }
 
 void play_victory_tune() {
-    sound(783, 100000); // G5
-    sound(1046, 100000); // C6
-    sound(1318, 100000); // E6
-    sound(1567, 225000); // G6
-    sound(1318, 75000); // E6
-    sound(1567, 600000); // G6
+  sound(783, 100000); // G5
+  sound(1046, 100000); // C6
+  sound(1318, 100000); // E6
+  sound(1567, 225000); // G6
+  sound(1318, 75000); // E6
+  sound(1567, 600000); // G6
 }
 
 void play_timer_start_tune() {
-    sound(1046, 100000); // C6
-    sound(1318, 100000); // E6
-    sound(1567, 100000); // G6
-    sound(2093, 100000); // C7
+  sound(1046, 100000); // C6
+  sound(1318, 100000); // E6
+  sound(1567, 100000); // G6
+  sound(2093, 100000); // C7
 }
 
 void play_timer_end_tune() {
-    sound(2093, 100000); // C7
-    sound(1567, 100000); // G6
-    sound(1318, 100000); // E6
-    sound(1046, 100000); // C6
+  sound(2093, 100000); // C7
+  sound(1567, 100000); // G6
+  sound(1318, 100000); // E6
+  sound(1046, 100000); // C6
 }
 
 void sound(unsigned int freq, unsigned long duration) {
-    unsigned long us;
-    unsigned long num_cycles, i;
-    us = (1000000 / (freq * 2));
-    num_cycles = (duration / (us * 2));
-    for (i = 0; i < num_cycles; i++) {
-        digitalWrite(SPEAKER_PIN, HIGH);
-        delayMicroseconds(us);
-        digitalWrite(SPEAKER_PIN, LOW);
-        delayMicroseconds(us);
-    }
+  unsigned long us;
+  unsigned long num_cycles, i;
+  us = (1000000 / (freq * 2));
+  num_cycles = (duration / (us * 2));
+  for (i = 0; i < num_cycles; i++) {
+    digitalWrite(SPEAKER_PIN, HIGH);
+    delayMicroseconds(us);
+    digitalWrite(SPEAKER_PIN, LOW);
+    delayMicroseconds(us);
+  }
 }
 
 ////////////
@@ -500,32 +500,32 @@ void sound(unsigned int freq, unsigned long duration) {
 ////////////
 
 void load_num_balls() {
-    num_balls = load_unsigned_long(MEMORY_ADDRESS_NUM_BALLS);
-    beep();
-    display_needs_update = true;
+  num_balls = load_unsigned_long(MEMORY_ADDRESS_NUM_BALLS);
+  beep();
+  display_needs_update = true;
 }
 
 void save_num_balls() {
-    save_unsigned_long(MEMORY_ADDRESS_NUM_BALLS, num_balls);
+  save_unsigned_long(MEMORY_ADDRESS_NUM_BALLS, num_balls);
 }
 
 unsigned load_unsigned_long(int address) {
-    unsigned long four = EEPROM.read(address);
-    unsigned long three = EEPROM.read(address + 1);
-    unsigned long two = EEPROM.read(address + 2);
-    unsigned long one = EEPROM.read(address + 3);
+  unsigned long four = EEPROM.read(address);
+  unsigned long three = EEPROM.read(address + 1);
+  unsigned long two = EEPROM.read(address + 2);
+  unsigned long one = EEPROM.read(address + 3);
 
-    return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+  return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
 }
 
 void save_unsigned_long(int address, unsigned long value) {
-    byte four = (value & 0xFF);
-    byte three = ((value >> 8) & 0xFF);
-    byte two = ((value >> 16) & 0xFF);
-    byte one = ((value >> 24) & 0xFF);
+  byte four = (value & 0xFF);
+  byte three = ((value >> 8) & 0xFF);
+  byte two = ((value >> 16) & 0xFF);
+  byte one = ((value >> 24) & 0xFF);
 
-    EEPROM.write(address, four);
-    EEPROM.write(address + 1, three);
-    EEPROM.write(address + 2, two);
-    EEPROM.write(address + 3, one);
+  EEPROM.write(address, four);
+  EEPROM.write(address + 1, three);
+  EEPROM.write(address + 2, two);
+  EEPROM.write(address + 3, one);
 }
