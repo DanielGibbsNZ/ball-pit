@@ -26,7 +26,7 @@
 #define TIMER_BEEP_MAX 2000
 #define TIMER_DURATION 60
 
-//Target mode configuration.
+// Target mode configuration.
 #define TARGET_NUMBER 50
 
 // Mode configuration.
@@ -71,17 +71,17 @@ unsigned long num_balls_timed = 0;
 // The number of seconds remaining in timed mode.
 unsigned int time_remaining = TIMER_DURATION;
 
-// The time that the timed mode timer started.
+// The time that the timed/target mode timer started.
 unsigned long timer_start = 0;
 
-// The number of balls remaining in target mode.
-unsigned long balls_remaining = TARGET_NUMBER;
+// The number of balls currently counted during target mode.
+unsigned long num_balls_target = 0;
 
-// The number of balls currently counted.
-unsigned long balls_got = 0;
+// The number of seconds elapsed in target mode.
+unsigned int time_elapsed_target = 0;
 
-// The time is has taken in target mode.
-unsigned int time_taken = 0;
+// Whether the user failed in target mode.
+bool target_failed = false;
 
 /////////////////////////
 // SETUP AND MAIN LOOP //
@@ -124,13 +124,8 @@ void loop() {
   check_sensor();
 
   // Update the timer if needed.
-  if (mode == TIMED_MODE) {
+  if (mode == TIMED_MODE || mode == TARGET_MODE) {
     update_timer();
-  }
-
-  //Update the count if needed
-  if(mode == TARGET_MODE){
-    update_count();
   }
 
   // Update the display every 10 cycles in debug mode.
@@ -184,9 +179,10 @@ void check_buttons() {
     } else if (button2) {
       set_num_balls(num_balls + 1);
     }
-  } 
+  }
 
   // If button 4 is pressed in either timed or target modes, start or reset the timer.
+  // If button 4 is pressed in target mode while the timer is running, fail the user.
   else if (mode == TIMED_MODE || mode == TARGET_MODE) {
     if (button4 && !timer_running) {
       // If the timer hasn't started yet, start it.
@@ -201,6 +197,11 @@ void check_buttons() {
         beep();
         display_needs_update = true;
       }
+    } else if (button4 && mode == TARGET_MODE) {
+      timer_running = false;
+      target_failed = true;
+      display_needs_update = true;
+      play_failure_tune();
     }
   }
 }
@@ -231,7 +232,7 @@ void enter_next_mode() {
   display_title_needs_update = true;
   display_needs_update = true;
 
-  // When entering timed mode, reset everything.
+  // When entering timed mode or target mode, reset everything.
   if (mode == TIMED_MODE || mode == TARGET_MODE) {
     reset_timer();
   }
@@ -269,7 +270,7 @@ void check_sensor() {
       increment_num_balls();
     } else if (mode == TIMED_MODE) {
       increment_num_balls_timed();
-    } else if(mode == TARGET_MODE){
+    } else if (mode == TARGET_MODE) {
       increment_num_balls_target();
     } else if (mode == DEBUG_MODE) {
       beep();
@@ -301,34 +302,13 @@ void increment_num_balls_timed() {
   }
 }
 
-void increment_num_balls_target(){
-  if(timer_running){
-    balls_got++;
-    numi_balls++;
-    timer_beep();
+void increment_num_balls_target() {
+  if (timer_running) {
+    num_balls_target++;
+    // Balls in target mode also count for normal mode.
+    num_balls++;
+    target_beep();
     save_num_balls();
-  }
-}
-
-///////////
-// COUNT //
-///////////
-
-void update_count(){
-  unsigned long now = millis();
-  unsigned long total_time = now - timer_start;
-  float total_seconds = total_time/1000.0;
-  int total_remaining = TARGET_NUMBER - balls_got;
-
-  if(balls_remaining = 0){
-    timer_running = false;
-    display_needs_update = true;
-    play_timer_end_tune();
-  } else if(balls_remaining != total_remaining){
-    balls_remaining = total_remaining;
-    time_taken = (unsigned int)total_seconds;
-    display_needs_update = true;    
-    //print out the time and balls remaining
   }
 }
 
@@ -337,33 +317,51 @@ void update_count(){
 ///////////
 
 void update_timer() {
-
   if (timer_running) {
     unsigned long now = millis();
     unsigned long elapsed = now - timer_start;
     float elapsed_seconds = elapsed / 1000.0;
-    float remaining_seconds = TIMER_DURATION - elapsed_seconds;
 
-    if (remaining_seconds < 0) {
-      time_remaining = 0;
-      timer_running = false;
-      display_needs_update = true;
-      play_timer_end_tune();
-    } else if ((unsigned int)remaining_seconds != time_remaining) {
-      time_remaining = (unsigned int)remaining_seconds;
-      display_needs_update = true;
+    if (mode == TIMED_MODE) {
+      float remaining_seconds = TIMER_DURATION - elapsed_seconds;
+
+      if (remaining_seconds < 0) {
+        time_remaining = 0;
+        timer_running = false;
+        display_needs_update = true;
+        play_timer_end_tune();
+      } else if ((unsigned int)remaining_seconds != time_remaining) {
+        time_remaining = (unsigned int)remaining_seconds;
+        display_needs_update = true;
+      }
+    } else if (mode == TARGET_MODE) {
+      unsigned long balls_remaining = TARGET_NUMBER - num_balls_target;
+
+      if (balls_remaining == 0) {
+        timer_running = false;
+        display_needs_update = true;
+        play_timer_end_tune();
+      } else if ((unsigned int)elapsed_seconds >= 10 * 60) {
+        timer_running = false;
+        target_failed = true;
+        display_needs_update = true;
+        play_failure_tune();
+      } else if ((unsigned int)elapsed_seconds != time_elapsed_target) {
+        time_elapsed_target = (unsigned int)elapsed_seconds;
+        display_needs_update = true;
+      }
     }
   }
 }
 
 void reset_timer() {
   num_balls_timed = 0;
+  num_balls_target = 0;
   timer_running = false;
   time_remaining = TIMER_DURATION;
   timer_start = 0;
-  balls_remaining = TARGET_NUMBER;
-  balls_got = 0;
-
+  time_elapsed_target = 0;
+  target_failed = false;
 }
 
 /////////////
@@ -381,8 +379,8 @@ void update_display_title() {
     lcd.print("=== BALL PIT ===");
   } else if (mode == TIMED_MODE) {
     lcd.print("== TIMED MODE ==");
-  } else if(mode == TARGET_NUMBER);
-    lcd.print("== TARGET MODE ==");
+  } else if (mode == TARGET_MODE) {
+    lcd.print("= TARGET MODE = ");
   } else if (mode == DEBUG_MODE) {
     lcd.print("---- DEBUG -----");
   }
@@ -399,7 +397,7 @@ void update_display() {
   if (mode == NORMAL_MODE) {
     // Show the total number of balls counted.
     if (num_balls == 1) {
-      sprintf(buf, "1 ball      ");
+      sprintf(buf, "1 ball          ");
     } else {
       sprintf(buf, "%ld balls", num_balls);
       sprintf(buf, "%-16s", buf);
@@ -407,18 +405,26 @@ void update_display() {
   } else if (mode == TIMED_MODE) {
     // Show the number of balls counted and the time remaining.
     if (num_balls_timed == 1) {
-      sprintf(buf, "1 ball     %02ds", time_remaining);
+      sprintf(buf, "1 ball       %02ds", time_remaining);
     } else {
       sprintf(buf, "%ld balls", num_balls_timed);
       sprintf(buf, "%-12s %02ds", buf, time_remaining);
     }
-  } else if(mode = TARGET_MODE){
-    // Show the number of balls remaining and the current time elapsed.
-    if (balls_remaining == 1){
-      sprintf(buf, "1 ball     %02ds", time_taken);
-    } else{
-      sprintf(buf, "%ld balls", balls_remaining);
-      sprintf(buf, "%-12s %02ds", buf, time_taken);
+  } else if (mode == TARGET_MODE) {
+    if (target_failed) {
+      sprintf(buf, "FAIL...         ");
+    } else {
+      // Show the number of balls remaining and the current time elapsed.
+      unsigned long balls_remaining = TARGET_NUMBER - num_balls_target;
+  
+      sprintf(buf, "%ld more", balls_remaining);
+      if (time_elapsed_target < 60) {
+        sprintf(buf, "%-11s %02ds", buf, time_elapsed_target);
+      } else {
+        unsigned int minutes = time_elapsed_target / 60;
+        unsigned int seconds = time_elapsed_target % 60;
+        sprintf(buf, "%-9s %01dm%02ds", buf, minutes, seconds);
+      }
     }
   } else if (mode == DEBUG_MODE) {
     // Show the sensor value.
@@ -445,6 +451,13 @@ void timer_beep() {
   sound(freq, 40000);
 }
 
+void target_beep() {
+  // The target mode beep gets higher as there are less balls remaining.
+  float t = num_balls_target / (float)time_elapsed_target;
+  float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
+  sound(freq, 40000);
+}
+
 void play_boot_tune() {
   sound(1046, 50000); // C6
   sound(1174, 50000); // D6
@@ -460,6 +473,16 @@ void play_short_tune() {
 }
 
 void play_victory_tune() {
+  sound(783, 100000); // G5
+  sound(1046, 100000); // C6
+  sound(1318, 100000); // E6
+  sound(1567, 225000); // G6
+  sound(1318, 75000); // E6
+  sound(1567, 600000); // G6
+}
+
+void play_failure_tune() {
+  // TODO: Make this sound sad.
   sound(783, 100000); // G5
   sound(1046, 100000); // C6
   sound(1318, 100000); // E6

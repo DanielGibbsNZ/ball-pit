@@ -22,9 +22,6 @@ The infrared sensor should be mounted in such a way that all balls entering the 
 Modes
 -----
 
-* Normal mode:
-    Counts the amount of balls successfully get
-* Timed mode:
-    Counts how many balls you can get within a time limit (60s)
-* Target mode:
-    Times how long it takes you to successfully get a target number of balls (50)
+* **Normal mode:** counts the total number of balls sensed.
+* **Timed mode:** counts how many balls sensed during a time period (60 seconds).
+* **Target mode:** times how long it takes to get a certain number of balls (50).
