@@ -482,13 +482,10 @@ void play_victory_tune() {
 }
 
 void play_failure_tune() {
-  // TODO: Make this sound sad.
-  sound(783, 100000); // G5
   sound(1046, 100000); // C6
-  sound(1318, 100000); // E6
-  sound(1567, 225000); // G6
-  sound(1318, 75000); // E6
-  sound(1567, 600000); // G6
+  sound(987, 100000); // B5
+  sound(932, 100000); // Bb5
+  sound(880, 600000); // A5
 }
 
 void play_timer_start_tune() {
