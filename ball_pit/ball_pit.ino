@@ -381,7 +381,7 @@ void update_display_title() {
   } else if (mode == TIMED_MODE) {
     lcd.print("== TIMED MODE ==");
   } else if (mode == TARGET_MODE) {
-    lcd.print("= TARGET MODE = ");
+    lcd.print("= TARGET MODE ==");
   } else if (mode == DEBUG_MODE) {
     lcd.print("---- DEBUG -----");
   }
@@ -420,11 +420,11 @@ void update_display() {
   
       sprintf(buf, "%ld more", balls_remaining);
       if (time_elapsed_target < 60) {
-        sprintf(buf, "%-11s %02ds", buf, time_elapsed_target);
+        sprintf(buf, "%-12s %02ds", buf, time_elapsed_target);
       } else {
         unsigned int minutes = time_elapsed_target / 60;
         unsigned int seconds = time_elapsed_target % 60;
-        sprintf(buf, "%-9s %01dm%02ds", buf, minutes, seconds);
+        sprintf(buf, "%-10s %01dm%02ds", buf, minutes, seconds);
       }
     }
   } else if (mode == DEBUG_MODE) {
