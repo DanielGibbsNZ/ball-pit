@@ -63,6 +63,9 @@ int mode = NORMAL_MODE;
 // The total number of balls counted.
 unsigned long num_balls = 0;
 
+// The total number of balls last loaded from memory.
+unsigned long num_balls_last_loaded = 0;
+
 // If the timer is running.
 bool timer_running = false;
 
@@ -171,10 +174,15 @@ void check_buttons() {
   // If buttons 1 and/or 2 are pressed in normal mode, adjust the number of balls counted.
   //   Button 1: Increment the count by 10
   //   Button 2: Increment the count by 1
-  //   Buttons 1 and 2: Reset the count to 0
+  //   Buttons 1 and 2: Reset the count to 0, but if it is already 0, restore the last loaded count.
   if (mode == NORMAL_MODE) {
     if (button1 && button2) {
-      set_num_balls(0);
+      if (num_balls == 0) {
+        set_num_balls(num_balls_last_loaded);
+        save_num_balls();
+      } else {
+        set_num_balls(0);
+      }
     } else if (button1) {
       set_num_balls(num_balls + 10);
     } else if (button2) {
@@ -209,7 +217,6 @@ void check_buttons() {
 
 void set_num_balls(unsigned long value) {
   num_balls = value;
-  save_num_balls();
   beep();
   display_needs_update = true;
 }
@@ -522,6 +529,7 @@ void sound(unsigned int freq, unsigned long duration) {
 
 void load_num_balls() {
   num_balls = load_unsigned_long(MEMORY_ADDRESS_NUM_BALLS);
+  num_balls_last_loaded = num_balls;
   beep();
   display_needs_update = true;
 }
