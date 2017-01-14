@@ -461,7 +461,7 @@ void timer_beep() {
 
 void target_beep() {
   // The target mode beep gets higher as there are less balls remaining.
-  float t = num_balls_target / (float)time_elapsed_target;
+  float t = num_balls_target / (float)TARGET_NUMBER;
   float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
   sound(freq, 40000);
 }
