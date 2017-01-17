@@ -365,6 +365,34 @@ void reset_timer() {
   target_failed = false;
 }
 
+/////////////////
+// COMPARISONS //
+/////////////////
+
+bool is_power_of_two(unsigned long number){
+  while (((number & 1) == 0) && number > 1) {
+    number >>= 1;
+  }
+  return (number == 1);
+}
+
+bool is_monodigit(unsigned long number){
+  char string[10]; // Since the max of an unsigned long is 4,294,967,295 this buffer is large enough for any number.
+  sprintf(string, "%lu", number);
+  int len = strlen(string);
+  if (len < 3) {
+    return false; // Only count three digit numbers and higher.
+  }
+  double mono_test = (pow(10, len)) / 9;
+  const char *final_digit_as_string = &string[len - 1];
+  int final_digit = atoi(final_digit_as_string);
+  if (final_digit == 0) {
+    return false; // Remove the possibility of dividing by 0.
+  }
+  return (number/final_digit) == (int)mono_test;
+
+}
+
 /////////////
 // DISPLAY //
 /////////////
@@ -441,7 +469,13 @@ void update_display() {
 
 void beep() {
   // The default beep gets slightly higher as the number of balls increases.
-  sound(1000 + (num_balls / 10), 40000);
+  if (is_power_of_two(num_balls)) {
+      play_power_of_two_tune();
+  } else if (is_monodigit(num_balls)) {
+      play_monodigit_tune();
+  } else {
+      sound(1000 + (num_balls / 10), 40000);
+  }
 }
 
 void timer_beep() {
@@ -457,6 +491,27 @@ void target_beep() {
   float t = num_balls_target / (float)time_elapsed_target;
   float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
   sound(freq, 40000);
+}
+
+void play_power_of_two_tune() {
+  // The 'Happy Birthday' opening.
+  sound(1046, 225000); // C6
+  sound(1046, 75000);  // C6
+  sound(1174, 300000); // D6
+  sound(1046, 300000); // C6
+  sound(1396, 300000); // F6
+  sound(1318, 600000); // E6
+}
+
+void play_monodigit_tune(){
+  // Something about a haircut?
+  sound(1396, 150000); // F6
+  sound(1046, 75000); // C6
+  sound(1046, 75000);  // C6
+  sound(1174, 150000); // D6
+  sound(1046, 300000); // C6
+  sound(1318, 150000); // E6
+  sound(1396, 150000); // F6
 }
 
 void play_boot_tune() {
