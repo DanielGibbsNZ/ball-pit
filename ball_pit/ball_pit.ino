@@ -294,14 +294,12 @@ void increment_num_balls() {
     play_victory_tune();
   } else if (num_balls % 100 == 0) {
     play_short_tune();
+  } else if (is_power_of_two(num_balls)) {
+    play_power_of_two_tune();
+  } else if (is_monodigit(num_balls)) {
+    play_monodigit_tune();
   } else {
-    if (is_power_of_two(num_balls)) {
-      play_power_of_two_tune();
-    } else if (is_monodigit(num_balls)) {
-      play_monodigit_tune();
-    } else {
-      beep();
-    }
+    beep();
   }
   save_num_balls();
 }
@@ -378,18 +376,18 @@ void reset_timer() {
   target_failed = false;
 }
 
-/////////////////
-// COMPARISONS //
-/////////////////
+////////////////////////
+// NUMBER COMPARISONS //
+////////////////////////
 
-bool is_power_of_two(unsigned long number){
+bool is_power_of_two(unsigned long number) {
   while (((number & 1) == 0) && number > 1) {
     number >>= 1;
   }
   return (number == 1);
 }
 
-bool is_monodigit(unsigned long number){
+bool is_monodigit(unsigned long number) {
   char number_as_string[11]; // Since the max of an unsigned long is 4,294,967,295 this buffer is large enough for any number.
   sprintf(number_as_string, "%lu", number);
   int len = strlen(number_as_string);
@@ -403,7 +401,6 @@ bool is_monodigit(unsigned long number){
     return false; // Remove the possibility of dividing by 0.
   }
   return (number/final_digit) == (int)mono_test;
-
 }
 
 /////////////
@@ -503,18 +500,18 @@ void target_beep() {
 void play_power_of_two_tune() {
   // The 'Happy Birthday' opening.
   sound(1046, 225000); // C6
-  sound(1046, 75000); // C6
+  sound(1046, 75000) ; // C6
   sound(1174, 300000); // D6
   sound(1046, 300000); // C6
   sound(1396, 300000); // F6
   sound(1318, 600000); // E6
 }
 
-void play_monodigit_tune(){
+void play_monodigit_tune() {
   // Something about a haircut?
   sound(1396, 150000); // F6
-  sound(1046, 75000); // C6
-  sound(1046, 75000); // C6
+  sound(1046, 75000) ; // C6
+  sound(1046, 75000) ; // C6
   sound(1174, 150000); // D6
   sound(1046, 300000); // C6
   sound(1318, 150000); // E6
