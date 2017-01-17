@@ -388,17 +388,20 @@ bool is_power_of_two(unsigned long number) {
 }
 
 bool is_monodigit(unsigned long number) {
-  char number_as_string[11]; // Since the max of an unsigned long is 4,294,967,295 this buffer is large enough for any number.
+  // Since the max of an unsigned long is 4,294,967,295 this buffer is large enough for any number.
+  char number_as_string[11];
   sprintf(number_as_string, "%lu", number);
   int len = strlen(number_as_string);
+  // Only count three digit numbers and higher.
   if (len < 3) {
-    return false; // Only count three digit numbers and higher.
+    return false;
   }
   double mono_test = (pow(10, len)) / 9;
   const char *final_digit_as_string = &number_as_string[len - 1];
   int final_digit = atoi(final_digit_as_string);
+  // Remove the possibility of dividing by 0.
   if (final_digit == 0) {
-    return false; // Remove the possibility of dividing by 0.
+    return false;
   }
   return (number/final_digit) == (int)mono_test;
 }
