@@ -500,7 +500,7 @@ void target_beep() {
 void play_power_of_two_tune() {
   // The 'Happy Birthday' opening.
   sound(1046, 225000); // C6
-  sound(1046, 75000) ; // C6
+  sound(1046, 75000); // C6
   sound(1174, 300000); // D6
   sound(1046, 300000); // C6
   sound(1396, 300000); // F6
@@ -510,8 +510,8 @@ void play_power_of_two_tune() {
 void play_monodigit_tune() {
   // Something about a haircut?
   sound(1396, 150000); // F6
-  sound(1046, 75000) ; // C6
-  sound(1046, 75000) ; // C6
+  sound(1046, 75000); // C6
+  sound(1046, 75000); // C6
   sound(1174, 150000); // D6
   sound(1046, 300000); // C6
   sound(1318, 150000); // E6
