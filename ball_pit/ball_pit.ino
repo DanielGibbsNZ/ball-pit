@@ -63,6 +63,9 @@ int mode = NORMAL_MODE;
 // The total number of balls counted.
 unsigned long num_balls = 0;
 
+// The total number of balls last loaded from memory.
+unsigned long num_balls_last_loaded = 0;
+
 // If the timer is running.
 bool timer_running = false;
 
@@ -171,10 +174,15 @@ void check_buttons() {
   // If buttons 1 and/or 2 are pressed in normal mode, adjust the number of balls counted.
   //   Button 1: Increment the count by 10
   //   Button 2: Increment the count by 1
-  //   Buttons 1 and 2: Reset the count to 0
+  //   Buttons 1 and 2: Reset the count to 0, but if it is already 0, restore the last loaded count.
   if (mode == NORMAL_MODE) {
     if (button1 && button2) {
-      set_num_balls(0);
+      if (num_balls == 0) {
+        set_num_balls(num_balls_last_loaded);
+        save_num_balls();
+      } else {
+        set_num_balls(0);
+      }
     } else if (button1) {
       set_num_balls(num_balls + 10);
     } else if (button2) {
@@ -209,7 +217,6 @@ void check_buttons() {
 
 void set_num_balls(unsigned long value) {
   num_balls = value;
-  save_num_balls();
   beep();
   display_needs_update = true;
 }
@@ -409,7 +416,7 @@ void update_display_title() {
   } else if (mode == TIMED_MODE) {
     lcd.print("== TIMED MODE ==");
   } else if (mode == TARGET_MODE) {
-    lcd.print("= TARGET MODE = ");
+    lcd.print("= TARGET MODE ==");
   } else if (mode == DEBUG_MODE) {
     lcd.print("---- DEBUG -----");
   }
@@ -448,11 +455,11 @@ void update_display() {
   
       sprintf(buf, "%ld more", balls_remaining);
       if (time_elapsed_target < 60) {
-        sprintf(buf, "%-11s %02ds", buf, time_elapsed_target);
+        sprintf(buf, "%-12s %02ds", buf, time_elapsed_target);
       } else {
         unsigned int minutes = time_elapsed_target / 60;
         unsigned int seconds = time_elapsed_target % 60;
-        sprintf(buf, "%-9s %01dm%02ds", buf, minutes, seconds);
+        sprintf(buf, "%-10s %01dm%02ds", buf, minutes, seconds);
       }
     }
   } else if (mode == DEBUG_MODE) {
@@ -488,7 +495,7 @@ void timer_beep() {
 
 void target_beep() {
   // The target mode beep gets higher as there are less balls remaining.
-  float t = num_balls_target / (float)time_elapsed_target;
+  float t = num_balls_target / (float)TARGET_NUMBER;
   float freq = (t * (TIMER_BEEP_MAX - TIMER_BEEP_MIN) + TIMER_BEEP_MIN);
   sound(freq, 40000);
 }
@@ -577,6 +584,7 @@ void sound(unsigned int freq, unsigned long duration) {
 
 void load_num_balls() {
   num_balls = load_unsigned_long(MEMORY_ADDRESS_NUM_BALLS);
+  num_balls_last_loaded = num_balls;
   beep();
   display_needs_update = true;
 }
